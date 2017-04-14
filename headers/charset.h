@@ -3,7 +3,14 @@
  * and the character set itself.
  */
 
-/* Starting location */
+/* Start of program */
+/* TODO: Support ETI 660 start location */
+#define PROG_START 0x200
+
+/* Max stack size that will be stored */
+#define MAX_STACK 16
+
+/* Character set starting location */
 #define CHAR_START 0x100
 
 /* Character Set */

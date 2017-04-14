@@ -1,5 +1,4 @@
 #include "display.h"
-#include "stdio.h"
 
 /* static SDL variables */
 static SDL_Window * DISPLAY_window;
@@ -75,7 +74,12 @@ void DISPLAY_clear(void)
     DISPLAY_update();
 }
 
-void DISPLAY_update()
+void DISPLAY_drawSprite(char x, char y, char * sprite, char rows)
+{
+
+}
+
+void DISPLAY_update(void)
 {
     SDL_BlitScaled(DISPLAY_surfaceChip, NULL, DISPLAY_surfaceWindow, NULL);
 }
