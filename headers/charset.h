@@ -13,6 +13,9 @@
 /* Character set starting location */
 #define CHAR_START 0x100
 
+/* Character height (number of bytes it uses) */
+#define CHAR_HEIGHT 5
+
 /* Character Set */
 #define CHAR_SET {[CHAR_START] =          \
     0xf0, 0x90, 0x90, 0x90, 0xf0, /* 0 */ \

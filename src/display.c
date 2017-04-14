@@ -74,7 +74,7 @@ void DISPLAY_clear(void)
     DISPLAY_update();
 }
 
-void DISPLAY_drawSprite(char x, char y, char * sprite, char rows)
+void DISPLAY_drawSprite(char x, char y, unsigned char * sprite, char rows)
 {
 
 }
