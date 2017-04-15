@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Iheaders -lSDL2 -o 8asil
-SOURCE_FILES=main.c src/display.c src/engine.c
+SOURCE_FILES=src/display.c src/system.c src/engine.c main.c
 
 # TODO: Handle parameter to enable/disable bulletproofing macro
 

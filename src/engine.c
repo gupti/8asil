@@ -1,8 +1,5 @@
 #include "engine.h"
 #include "charset.h"
-#include <time.h>
-#include <stdlib.h>
-#include <limits.h>
 
 typedef struct
 {
@@ -33,19 +30,22 @@ typedef struct
 
 static chipState ENGINE_state = {.mem = CHAR_SET};
 
-void ENGINE_loadProgram(char *progName)
+char ENGINE_loadProgram(char *progName)
 {
     ENGINE_reset();
+    return SYS_loadProgram(progName, &ENGINE_state.mem[0x200], 4096 - 0x200);
 }
 
 void ENGINE_start(char * progName)
 {
     ENGINE_reset();
-    ENGINE_loadProgram(progName);
-}
-
-void ENGINE_run(void)
-{
+    if(!ENGINE_loadProgram(progName))
+    {
+        if (DISPLAY_init(CHIP, 8))
+        {
+            ENGINE_run();
+        }
+    }
 }
 
 void ENGINE_reset(void)
@@ -59,16 +59,31 @@ void ENGINE_reset(void)
     /* Stack starts at memory location 0 */
     ENGINE_state.sp = 0;
     ENGINE_state.ss = 0;
-    srand(time(NULL));
+
+    SYS_init();
 }
 
-static int ENGINE_push(unsigned short address)
+/* TODO: ENGINE_push and ENGINE_pop are currently just poor hacks so testing can begin */
+static char ENGINE_push(void)
 {
+    if (sizeof(short) * MAX_STACK <= ENGINE_state.sp)
+    {
+        return 0;
+    }
+    ENGINE_state.sp += 2;
+    memcpy(&ENGINE_state.mem[ENGINE_state.sp], &ENGINE_state.pc, 2);
+    ENGINE_state.pc = addressTo12bit(ENGINE_state.pc);
     return 1;
 }
 
-static int ENGINE_pop()
+static char ENGINE_pop(void)
 {
+    if (ENGINE_state.sp == 0)
+    {
+        return 0;
+    }
+    ENGINE_state.pc = addressTo12bit(ENGINE_state.mem[ENGINE_state.sp]);
+    ENGINE_state.sp -= 2;
     return 1;
 }
 
@@ -77,7 +92,7 @@ static int ENGINE_pop()
 void ENGINE_cycle(void)
 {
     /* How much to increment the program counter, 2 bytes (1 instruction) by default */
-    int advancePC = 2;
+    char advancePC = 2;
 
     /* Perhaps add check to see if memory location is even */
     switch(ENGINE_state.mem[ENGINE_state.pc] & 0xf0)
@@ -92,6 +107,7 @@ void ENGINE_cycle(void)
                     case 0xe0:
                         DISPLAY_clear();
                         break;
+
                     /* RET */
                     case 0xee:
                         ENGINE_pop();
@@ -109,8 +125,8 @@ void ENGINE_cycle(void)
 
         /* CALL */
         case 0x20:
-            ENGINE_push(ENGINE_state.pc);
-            ENGINE_state.pc = addressTo12bit(ENGINE_state.pc);
+            ENGINE_push();
+            advancePC = 0;
             break;
 
         /* SE */
@@ -271,7 +287,7 @@ void ENGINE_cycle(void)
 
         /* RND */
         case 0xc0:
-            ENGINE_state.reg[ENGINE_state.mem[ENGINE_state.pc] & 0x0f] = (rand() % (UCHAR_MAX + 1)) & ENGINE_state.mem[ENGINE_state.pc + 1];
+            ENGINE_state.reg[ENGINE_state.mem[ENGINE_state.pc] & 0x0f] = SYS_randChar() & ENGINE_state.mem[ENGINE_state.pc + 1];
             break;
 
         /* DRW */
@@ -343,5 +359,13 @@ void ENGINE_cycle(void)
     if(ENGINE_state.pc > 4095)
     {
         // error!
+    }
+}
+
+void ENGINE_run(void)
+{
+    while (1)
+    {
+        ENGINE_cycle();
     }
 }

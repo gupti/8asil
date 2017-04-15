@@ -76,7 +76,25 @@ void DISPLAY_clear(void)
 
 void DISPLAY_drawSprite(char x, char y, unsigned char * sprite, char rows)
 {
+    unsigned short currentX = x % availableModes[DISPLAY_currentDisplayMode].width;
+    unsigned short  currentY = y % availableModes[DISPLAY_currentDisplayMode].height;
+    unsigned char * pixelLocation;
+    unsigned char spritebyte = *sprite;
+    for (unsigned char i = 0; i < rows; i++)
+    {
+        for (unsigned char j = 0; j < 8; j++)
+        {
+            pixelLocation = (unsigned char *)DISPLAY_surfaceChip->pixels + currentX + currentY * availableModes[DISPLAY_currentDisplayMode].width;
+            *pixelLocation ^= spritebyte & 0x01;
+            currentX = (currentX + 1) % availableModes[DISPLAY_currentDisplayMode].width;
+            spritebyte >>= 1;
+        }
+        spritebyte = *(sprite + i + 1);
+        currentY = (currentY + 1) % availableModes[DISPLAY_currentDisplayMode].height;
+        currentX = x;
+    }
 
+    DISPLAY_update();
 }
 
 void DISPLAY_update(void)

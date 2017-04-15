@@ -1,8 +1,8 @@
 /* Temporary for testing, engine.c will take care of this */
-#include <display.h>
+#include <engine.h>
 
 int main(int argc, char* argv[])
 {
-    DISPLAY_init(CHIP, 4);
+    ENGINE_start("test.c8");
     return 0;
 }

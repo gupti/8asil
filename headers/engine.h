@@ -1,4 +1,5 @@
 #include "display.h"
+#include "system.h"
 
 /* ENGINE_start
  * Initialization function of the engine that starts emulation
