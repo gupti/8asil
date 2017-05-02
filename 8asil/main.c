@@ -3,6 +3,6 @@
 
 int main(int argc, char* argv[])
 {
-    ENGINE_start("test.c8");
+    ENGINE_start("/Users/paul/test.c8");
     return 0;
 }

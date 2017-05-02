@@ -11,7 +11,7 @@
 #define MAX_STACK 16
 
 /* Character set starting location */
-#define CHAR_START 0x100
+#define CHAR_START 0x000
 
 /* Character height (number of bytes it uses) */
 #define CHAR_HEIGHT 5

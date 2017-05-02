@@ -30,6 +30,8 @@ int SYS_loadProgram(char * progName, void * memLoc, size_t max)
         return 3;
     }
     fclose(program);
+
+    printf("SUCESSFUL LOAD\n");
     return 0;
 }
 
