@@ -17,3 +17,14 @@ int SYS_loadProgram(char * progName, void * memLoc, size_t max);
  * Produces a random number from 0 to 255
  */
 unsigned char SYS_randChar(void);
+
+
+void SYS_setDelay(unsigned char delay);
+
+unsigned char SYS_getDelay(void);
+
+void SYS_setSound(unsigned char audio);
+
+unsigned char SYS_waitForKey(void);
+
+unsigned char SYS_getKeyState(unsigned char key);

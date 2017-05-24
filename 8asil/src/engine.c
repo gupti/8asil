@@ -12,15 +12,11 @@ typedef struct
     /* 16 bit I register, used to store memory addresses */
     unsigned short i;
 
-    /* Delay and sound timers */
-    char dt;
-    char st;
-
     /* Program Counter */
     unsigned short pc;
 
     /* Stack Pointer */
-    unsigned char sp;
+    unsigned short sp;
 
     /* Stack size */
     unsigned char ss;
@@ -64,10 +60,9 @@ void ENGINE_reset(void)
     /* TODO: Check if mem needs reseting too */
     memset(&ENGINE_state.reg, 0, 16);
     ENGINE_state.i = 0;
-    ENGINE_state.dt = 0;
-    ENGINE_state.st = 0;
     /* Stack starts at memory location 0 */
-    ENGINE_state.sp = 0;
+    
+    ENGINE_state.sp = STACK_START;
     ENGINE_state.ss = 0;
     ENGINE_state.pc = PROG_START;
     SYS_init();
@@ -76,33 +71,37 @@ void ENGINE_reset(void)
 /* TODO: ENGINE_push and ENGINE_pop are currently just poor hacks so testing can begin */
 static char ENGINE_push(void)
 {
-    if (sizeof(short) * MAX_STACK <= ENGINE_state.sp)
+    if (ENGINE_state.ss >= STACK_MAX)
     {
         printf("No more stack space!\n");
         return 2;
     }
     ENGINE_state.sp += 2;
-    memcpy(&ENGINE_state.mem[ENGINE_state.sp], &ENGINE_state.pc, 2);
-    printf("stackpointer = %u, new address = %u\n", ENGINE_state.sp, addressTo12bit(ENGINE_state.pc));
+    ENGINE_state.mem[ENGINE_state.sp] = (addressTo12bit(ENGINE_state.pc) & 0xff00) >> 8;
+    ENGINE_state.mem[ENGINE_state.sp + 1] = addressTo12bit(ENGINE_state.pc) & 0x00ff;
+    printf("PUSH: stackpointer = %x, new address = %x\n", ENGINE_state.sp, addressTo12bit(ENGINE_state.pc));
     ENGINE_state.pc = addressTo12bit(ENGINE_state.pc);
+    ++ENGINE_state.ss;
     return 0;
 }
 
 static char ENGINE_pop(void)
 {
-    if (ENGINE_state.sp == 0)
+    if (ENGINE_state.ss == 0)
     {
-        printf("Nothing to pop!");
+        printf("Nothing to pop!\n");
         return 2;
     }
-    ENGINE_state.pc = addressTo12bit(ENGINE_state.mem[ENGINE_state.sp]);
+    ENGINE_state.pc = addressTo12bit(ENGINE_state.sp);
     ENGINE_state.sp -= 2;
-    printf("Return address = %u, stackpointer = %u\n", ENGINE_state.pc, ENGINE_state.sp);
+    --ENGINE_state.ss;
+    printf("POP: Return address = %x, stackpointer = %x\n", ENGINE_state.pc, ENGINE_state.sp);
     return 0;
 }
 
 
 /* TODO: make sure the Vf register isn't being accessed */
+
 void ENGINE_cycle(void)
 {
     /* How much to increment the program counter, 2 bytes (1 instruction) by default */
@@ -111,15 +110,18 @@ void ENGINE_cycle(void)
     unsigned char INS1 = ENGINE_state.mem[ENGINE_state.pc];
     unsigned char INS2 = ENGINE_state.mem[ENGINE_state.pc + 1];
     
-//    printf("Current address = %u, Instruction1 = %#04x, Instruction2 = %#04x\n", ENGINE_state.pc, INS1, INS2);
-    printf("PC: %d, INS1: %#04x, INS2: %#04x\n", ENGINE_state.pc, INS1, INS2);
-    /* Perhaps add check to see if memory location is even */
+    printf("\nPC: %#05x, INS: %#04x%02x\n", ENGINE_state.pc, INS1, INS2);
+    printf("Regs: ");
+    for (int i = 0; i < 16; i++)
+    {
+        printf("%x = %x, ", i, ENGINE_state.reg[i]);
+    }
+    printf("\n");
+    
     switch(INS1 & 0xf0)
     {
         case 0x00:
             /* Ignore SYS instruction */
-            if (INS1 & 0x0f)
-            {
                 switch(INS2)
                 {
                     /* CLS */
@@ -131,8 +133,12 @@ void ENGINE_cycle(void)
                     case 0xee:
                         advancePC = ENGINE_pop();
                         break;
+                    //DEBUG
+                    default:
+                        printf("NOP\n");
+                        break;
                 }
-            }
+            
             break;
 
         /* JP */
@@ -189,6 +195,10 @@ void ENGINE_cycle(void)
         case 0x80:
             switch(INS2 & 0x0f)
             {
+                //DEBUG
+                default:
+                    printf("NOP\n");
+                    break;
                 /* LD */
                 case 0x00:
                     ENGINE_state.reg[INS1 & 0x0f] = ENGINE_state.reg[(INS2 & 0xf0) >> 4];
@@ -261,12 +271,12 @@ void ENGINE_cycle(void)
                     {
                        ENGINE_state.reg[0xf] = 0;
                     }
-                    ENGINE_state.reg[INS1 & 0x0f] = ENGINE_state.reg[INS1 & 0x0f] - ENGINE_state.reg[(INS2 & 0xf0) >> 4];
+                    ENGINE_state.reg[INS1 & 0x0f] = ENGINE_state.reg[(INS2 & 0xf0) >> 4] - ENGINE_state.reg[INS1 & 0x0f];
                     break;
 
                 /* SHL  */
                 case 0x0e:
-                    if (ENGINE_state.reg[INS1 & 0x0f] & 0x8)
+                    if (ENGINE_state.reg[INS1 & 0x0f] & 0x80)
                     {
                         ENGINE_state.reg[0xf] = 1;
                     }
@@ -294,7 +304,7 @@ void ENGINE_cycle(void)
         /* LD */
         case 0xa0:
             ENGINE_state.i = addressTo12bit(ENGINE_state.pc);
-            printf("I register: %d\n", ENGINE_state.i);
+//            printf("I register: %d\n", ENGINE_state.i);
             break;
 
         /* JP */
@@ -309,33 +319,46 @@ void ENGINE_cycle(void)
 
         /* DRW */
         case 0xd0:
-            printf("Drawing with registers %d and %d, length %d, location = %d\nMEMORY = %p, passed in = %p\n", INS1 & 0x0f, (INS2 & 0xf0) >> 4, INS2 & 0x0f, ENGINE_state.i, ENGINE_state.mem, &ENGINE_state.mem[ENGINE_state.i]);
-
-            printf("~~~SPRITE~~~\n");
-            unsigned char thing;
-            for (int i = 0; i < (INS2 & 0x0f); i++)
-            {
-                thing = ENGINE_state.mem[ENGINE_state.i + i];
-                for(int j = 0; j < 8; j++)
-                {
-                    printf((thing & 0x80) ? "*": "-");
-                    thing <<= 1;
-                }
-                printf("\n");
-            }
-            DISPLAY_drawSprite(ENGINE_state.reg[INS1 & 0x0f],
+//            printf("Drawing with registers %d and %d, length %d, location = %x\nMEMORY = %p, passed in = %p\n", INS1 & 0x0f, (INS2 & 0xf0) >> 4, INS2 & 0x0f, ENGINE_state.i, ENGINE_state.mem, &ENGINE_state.mem[ENGINE_state.i]);
+//
+//            printf("~~~SPRITE~~~\n");
+//            unsigned char thing;
+//            for (int i = 0; i < (INS2 & 0x0f); i++)
+//            {
+//                thing = ENGINE_state.mem[ENGINE_state.i + i];
+//                for(int j = 0; j < 8; j++)
+//                {
+//                    printf((thing & 0x80) ? "*": "-");
+//                    thing <<= 1;
+//                }
+//                printf("\n");
+//            }
+            ENGINE_state.reg[0xf] = DISPLAY_drawSprite(ENGINE_state.reg[INS1 & 0x0f],
                     ENGINE_state.reg[(INS2 & 0xf0) >> 4],
                     &ENGINE_state.mem[ENGINE_state.i],
                     INS2 & 0x0f);
             break;
 
-        /* TODO: Stubs, no input yet */
         case 0xe0:
             switch(INS2)
             {
+                /* SKP */
                 case 0x9e:
+                    if (SYS_getKeyState(ENGINE_state.reg[INS1 & 0x0f]))
+                    {
+                        advancePC = 4;
+                    }
                     break;
+                /* SKNP */
                 case 0xa1:
+                    if (!SYS_getKeyState(ENGINE_state.reg[INS1 & 0x0f]))
+                    {
+                        advancePC = 4;
+                    }
+                    break;
+                    //DEBUG
+                default:
+                    printf("NOP\n");
                     break;
             }
             break;
@@ -344,17 +367,21 @@ void ENGINE_cycle(void)
             switch(INS2)
             {
                 case 0x07:
+                    ENGINE_state.reg[INS1 & 0x0f] = SYS_getDelay();
                     break;
                 case 0x0a:
+                    ENGINE_state.reg[INS1 & 0x0f] = SYS_waitForKey();
                     break;
                 case 0x15:
+                    SYS_setDelay(ENGINE_state.reg[INS1 & 0x0f]);
                     break;
                 case 0x18:
+                    SYS_setSound(ENGINE_state.reg[INS1 & 0x0f]);
                     break;
 
                 /* ADD */
                 case 0x1e:
-                    ENGINE_state.i += ENGINE_state.reg[ENGINE_state.mem[ENGINE_state.pc & 0x0f]];
+                    ENGINE_state.i += ENGINE_state.reg[INS1 & 0x0f];
                     break;
 
                 /* LD */
@@ -374,12 +401,16 @@ void ENGINE_cycle(void)
 
                 /* LD */
                 case 0x55:
-                    memcpy(&ENGINE_state.mem[ENGINE_state.i], &ENGINE_state.reg, 16);
+                    memcpy(&ENGINE_state.mem[ENGINE_state.i], &ENGINE_state.reg, INS1 & 0x0f);
                     break;
 
                 /* LD */
                 case 0x65:
-                    memcpy(&ENGINE_state.reg, &ENGINE_state.mem[ENGINE_state.i], 16);
+                    memcpy(&ENGINE_state.reg, &ENGINE_state.mem[ENGINE_state.i], INS1 & 0x0f);
+                    break;
+                    //DEBUG
+                default:
+                    printf("NOP\n");
                     break;
             }
             break;
@@ -387,25 +418,9 @@ void ENGINE_cycle(void)
     }
 
     ENGINE_state.pc += advancePC;
-//    printf("advancePC = %u\nRegisters: ", advancePC);
-//    for (int i = 0; i < 16; i++)
-//    {
-//        printf("%d = %d,", i, ENGINE_state.reg[i]);
-//    }
-//    printf("\n");
-//    if(ENGINE_state.pc > 4095)
-//    {
-//        printf("INVALID ADRESS!!!\n");
-//        // error!
-//    }
-//    printf("\n");
 }
 
 void ENGINE_run(void)
 {
-    while (1)
-    {
-        SDL_Delay(200);
-        ENGINE_cycle();
-    }
+    ENGINE_cycle();
 }

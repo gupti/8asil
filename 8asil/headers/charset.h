@@ -7,8 +7,11 @@
 /* TODO: Support ETI 660 start location */
 #define PROG_START 0x200
 
+/* Starting location of the stack */
+#define STACK_START 0x100
+
 /* Max stack size that will be stored */
-#define MAX_STACK 16
+#define STACK_MAX 16
 
 /* Character set starting location */
 #define CHAR_START 0x000
