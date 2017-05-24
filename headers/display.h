@@ -24,7 +24,7 @@ void DISPLAY_clear(void);
  * Draws a sprite to the screen using a memory location, up to 8x15
  * Used for the DRW instruction
  */
-void DISPLAY_drawSprite(char x, char y, unsigned char * sprite, char rows);
+unsigned char DISPLAY_drawSprite(char x, char y, unsigned char * sprite, char rows);
 
 /* DISPLAY_update
  * Update the display's surface what's in the CHIP's surface
@@ -35,3 +35,4 @@ void DISPLAY_update(void);
  * Closes display and does cleanup
  */
 void DISPLAY_close(void);
+

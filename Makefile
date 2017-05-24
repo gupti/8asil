@@ -17,4 +17,5 @@ debug_bulletproof:
 	$(CC) $(CFLAGS) -g -D BULLETPROOF $(SOURCE_FILES)
 
 clean:
-	rm 8asil 8asil.dSYM
+	-rm 8asil
+	-rm -r 8asil.dSYM
